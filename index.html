@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mole Ratio Rally</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom animation classes that Tailwind doesn't have by default */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        sub { vertical-align: sub; font-size: smaller; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 min-h-screen flex items-center justify-center p-4">
+
+    <!-- App Container -->
+    <div id="app" class="max-w-3xl w-full bg-white rounded-xl shadow-lg overflow-hidden flex flex-col min-h-[600px]">
+        <!-- Content will be injected here by JavaScript -->
+    </div>
+
+    <!-- Completion Modal Template (Hidden by default) -->
+    <div id="completion-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-xl max-w-md w-full text-center fade-in">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-2xl font-bold mb-2">Well Done!</h2>
+            <p class="text-slate-600 mb-6">You have mastered mole ratios from simple reactions to advanced double displacement!</p>
+            <button onclick="restartGame()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-bold transition-colors">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        const reactionDatabase = {
+            easy: [
+                { title: "Formation of Water", description: "Synthesis of water from hydrogen and oxygen.", equation: [{ coef: 2, formula: "H2", name: "Hydrogen" }, { coef: 1, formula: "O2", name: "Oxygen" }, { arrow: true }, { coef: 2, formula: "H2O", name: "Water" }] },
+                { title: "Synthesis of Ammonia", description: "The Haber process for making fertilizer.", equation: [{ coef: 1, formula: "N2", name: "Nitrogen" }, { coef: 3, formula: "H2", name: "Hydrogen" }, { arrow: true }, { coef: 2, formula: "NH3", name: "Ammonia" }] },
+                { title: "Sodium Chloride Synthesis", description: "Making table salt from dangerous elements.", equation: [{ coef: 2, formula: "Na", name: "Sodium" }, { coef: 1, formula: "Cl2", name: "Chlorine" }, { arrow: true }, { coef: 2, formula: "NaCl", name: "Sodium Chloride" }] },
+                { title: "Decomposition of Water", description: "Breaking water back into gases using electricity.", equation: [{ coef: 2, formula: "H2O", name: "Water" }, { arrow: true }, { coef: 2, formula: "H2", name: "Hydrogen" }, { coef: 1, formula: "O2", name: "Oxygen" }] }
+            ],
+            medium: [
+                { title: "Methane Combustion", description: "Burning natural gas in a stove.", equation: [{ coef: 1, formula: "CH4", name: "Methane" }, { coef: 2, formula: "O2", name: "Oxygen" }, { arrow: true }, { coef: 1, formula: "CO2", name: "Carbon Dioxide" }, { coef: 2, formula: "H2O", name: "Water" }] },
+                { title: "Potassium Chlorate Breakdown", description: "Heating this solid releases pure oxygen gas.", equation: [{ coef: 2, formula: "KClO3", name: "Potassium Chlorate" }, { arrow: true }, { coef: 2, formula: "KCl", name: "Potassium Chloride" }, { coef: 3, formula: "O2", name: "Oxygen" }] },
+                { title: "Aluminum Oxide Formation", description: "Aluminum metal reacting with air to form a protective layer.", equation: [{ coef: 4, formula: "Al", name: "Aluminum" }, { coef: 3, formula: "O2", name: "Oxygen" }, { arrow: true }, { coef: 2, formula: "Al2O3", name: "Aluminum Oxide" }] },
+                { title: "Rusting of Iron", description: "Iron reacting with oxygen over time.", equation: [{ coef: 4, formula: "Fe", name: "Iron" }, { coef: 3, formula: "O2", name: "Oxygen" }, { arrow: true }, { coef: 2, formula: "Fe2O3", name: "Iron (III) Oxide" }] }
+            ],
+            hard: [
+                { title: "Combustion of Propane", description: "Burning propane in a BBQ grill.", equation: [{ coef: 1, formula: "C3H8", name: "Propane" }, { coef: 5, formula: "O2", name: "Oxygen" }, { arrow: true }, { coef: 3, formula: "CO2", name: "Carbon Dioxide" }, { coef: 4, formula: "H2O", name: "Water" }] },
+                { title: "Combustion of Octane", description: "The main reaction in a gasoline car engine.", equation: [{ coef: 2, formula: "C8H18", name: "Octane" }, { coef: 25, formula: "O2", name: "Oxygen" }, { arrow: true }, { coef: 16, formula: "CO2", name: "Carbon Dioxide" }, { coef: 18, formula: "H2O", name: "Water" }] },
+                { title: "Combustion of Ethanol", description: "Burning alcohol as a fuel source.", equation: [{ coef: 1, formula: "C2H5OH", name: "Ethanol" }, { coef: 3, formula: "O2", name: "Oxygen" }, { arrow: true }, { coef: 2, formula: "CO2", name: "Carbon Dioxide" }, { coef: 3, formula: "H2O", name: "Water" }] },
+                { title: "Combustion of Butane", description: "The reaction inside a disposable lighter.", equation: [{ coef: 2, formula: "C4H10", name: "Butane" }, { coef: 13, formula: "O2", name: "Oxygen" }, { arrow: true }, { coef: 8, formula: "CO2", name: "Carbon Dioxide" }, { coef: 10, formula: "H2O", name: "Water" }] }
+            ],
+            advanced: [
+                { title: "Calcium Phosphate Precipitate", description: "Double displacement with polyatomic ions.", equation: [{ coef: 3, formula: "Ca(NO3)2", name: "Calcium Nitrate" }, { coef: 2, formula: "Na3PO4", name: "Sodium Phosphate" }, { arrow: true }, { coef: 1, formula: "Ca3(PO4)2", name: "Calcium Phosphate" }, { coef: 6, formula: "NaNO3", name: "Sodium Nitrate" }] },
+                { title: "Iron (III) Hydroxide Formation", description: "Mixing sulfate and hydroxide solutions.", equation: [{ coef: 1, formula: "Fe2(SO4)3", name: "Iron (III) Sulfate" }, { coef: 6, formula: "KOH", name: "Potassium Hydroxide" }, { arrow: true }, { coef: 2, formula: "Fe(OH)3", name: "Iron (III) Hydroxide" }, { coef: 3, formula: "K2SO4", name: "Potassium Sulfate" }] },
+                { title: "Zinc Phosphate Reaction", description: "Complex double displacement with ammonium.", equation: [{ coef: 2, formula: "(NH4)3PO4", name: "Ammonium Phosphate" }, { coef: 3, formula: "Zn(NO3)2", name: "Zinc Nitrate" }, { arrow: true }, { coef: 1, formula: "Zn3(PO4)2", name: "Zinc Phosphate" }, { coef: 6, formula: "NH4NO3", name: "Ammonium Nitrate" }] },
+                { title: "Aluminum Hydroxide Formation", description: "Reaction forming a gelatinous precipitate.", equation: [{ coef: 1, formula: "Al2(SO4)3", name: "Aluminum Sulfate" }, { coef: 6, formula: "NaOH", name: "Sodium Hydroxide" }, { arrow: true }, { coef: 2, formula: "Al(OH)3", name: "Aluminum Hydroxide" }, { coef: 3, formula: "Na2SO4", name: "Sodium Sulfate" }] }
+            ]
+        };
+
+        // --- STATE & UTILS ---
+        let state = {
+            view: 'intro', // intro, game
+            levels: [],
+            currentLevelIdx: 0,
+            currentRatioIdx: 0,
+            inputs: { numCoeff: '', numUnit: '', numSub: '', denCoeff: '', denUnit: '', denSub: '' },
+            fieldStatus: { numCoeff: 'neutral', numUnit: 'neutral', numSub: 'neutral', denCoeff: 'neutral', denUnit: 'neutral', denSub: 'neutral' },
+            feedback: null, // null, 'correct', 'incorrect', 'revealed'
+            feedbackMsg: '',
+            attempts: 0
+        };
+
+        const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        
+        const formatFormulaString = (formula) => {
+            const subscripts = "₀₁₂₃₄₅₆₇₈₉";
+            return formula.replace(/[0-9]/g, (char) => subscripts[parseInt(char)]);
+        };
+
+        const formatFormulaHTML = (formula) => {
+            return formula.split(/(\d+)/).map(part => /^\d+$/.test(part) ? `<sub>${part}</sub>` : part).join('');
+        };
+
+        const generateRatios = (equation) => {
+            const parts = equation.filter(p => !p.arrow);
+            const ratios = [];
+            for (let i = 0; i < parts.length; i++) {
+                for (let j = 0; j < parts.length; j++) {
+                    if (i === j) continue;
+                    const num = parts[i];
+                    const den = parts[j];
+                    const formatPart = (part) => `${part.name}, ${formatFormulaString(part.formula)}`;
+                    ratios.push({
+                        q: `${formatPart(num)}, to ${formatPart(den)}`,
+                        num: { c: num.coef.toString(), s: [num.formula, num.name] },
+                        den: { c: den.coef.toString(), s: [den.formula, den.name] }
+                    });
+                }
+            }
+            return ratios;
+        };
+
+        const generateGameLevels = () => {
+            const easyRxn = pickRandom(reactionDatabase.easy);
+            const medRxn = pickRandom(reactionDatabase.medium);
+            const hardRxn = pickRandom(reactionDatabase.hard);
+            const advRxn = pickRandom(reactionDatabase.advanced);
+            
+            const rawLevels = [
+                { ...easyRxn, id: 1, difficultyLabel: "Level 1 (Easy)" },
+                { ...medRxn, id: 2, difficultyLabel: "Level 2 (Medium)" },
+                { ...hardRxn, id: 3, difficultyLabel: "Level 3 (Hard)" },
+                { ...advRxn, id: 4, difficultyLabel: "Level 4 (Advanced)" }
+            ];
+
+            return rawLevels.map(lvl => ({ ...lvl, ratios: generateRatios(lvl.equation) }));
+        };
+
+        // --- RENDER FUNCTIONS ---
+
+        const renderApp = () => {
+            const app = document.getElementById('app');
+            app.innerHTML = ''; // Clear
+
+            if (state.view === 'intro') {
+                app.innerHTML = `
+                    <div class="bg-indigo-600 p-8 text-white">
+                        <h1 class="text-3xl font-bold mb-2 flex items-center gap-2">
+                            <i data-lucide="beaker" class="w-8 h-8"></i> Mole Ratio Rally
+                        </h1>
+                        <p class="text-indigo-100">Master the language of stoichiometry.</p>
+                    </div>
+                    <div class="p-8 space-y-6">
+                        <h2 class="text-xl font-bold text-slate-700">How to Play</h2>
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
+                            <p class="mb-2">For each chemical reaction, you will solve <strong>ONE</strong> random mole ratio.</p>
+                            <ul class="list-disc ml-5 space-y-2 text-slate-700">
+                                <li>Write the <strong>Coefficient</strong>, <strong>Unit (mol)</strong>, and <strong>Formula</strong>.</li>
+                                <li>Green means correct, Red means incorrect.</li>
+                                <li>You get 2 chances before the answer is revealed.</li>
+                            </ul>
+                            <p class="mt-4 text-sm text-blue-800 italic">Note: Reactions are randomized every time you play!</p>
+                        </div>
+                        <button onclick="startGame()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
+                            Start Activity <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                `;
+            } else {
+                const level = state.levels[state.currentLevelIdx];
+                const ratioData = level.ratios[state.currentRatioIdx];
+                const isDone = state.feedback === 'correct' || state.feedback === 'revealed';
+                const isGameComplete = isDone && state.currentLevelIdx === state.levels.length - 1;
+
+                // Build Level Indicators HTML
+                const levelIndicators = state.levels.map((lvl, idx) => {
+                    const arrow = idx > 0 ? '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>' : '';
+                    let classes = 'text-slate-400';
+                    if (state.currentLevelIdx === idx) classes = 'bg-indigo-600 text-white shadow-md';
+                    else if (state.currentLevelIdx > idx) classes = 'bg-indigo-100 text-indigo-700';
+                    
+                    return `
+                        ${arrow}
+                        <span class="px-2 py-1 rounded transition-colors text-sm font-medium ${classes}">
+                            L${lvl.id}
+                        </span>
+                    `;
+                }).join('');
+
+                // Build Equation HTML
+                const equationHtml = level.equation.map((part, i) => {
+                    if (part.arrow) return `<i data-lucide="arrow-right" class="w-6 h-6 md:w-8 md:h-8 text-slate-400 mx-2"></i>`;
+                    const plus = (i < level.equation.length - 1 && !level.equation[i+1].arrow) ? '<span class="mx-2 text-slate-400">+</span>' : '';
+                    const coef = part.coef > 0 ? `<span class="text-indigo-600 mr-2">${part.coef}</span>` : '';
+                    return `<span class="whitespace-nowrap">${coef}${formatFormulaHTML(part.formula)}${plus}</span>`;
+                }).join('');
+
+                // Helper to get input classes based on status
+                const getClass = (field) => {
+                    const status = state.fieldStatus[field];
+                    const base = "text-center text-lg border rounded focus:outline-none transition-colors duration-300";
+                    if (status === 'correct') return `${base} border-green-500 bg-green-50 text-green-900`;
+                    if (status === 'error') return `${base} border-red-500 bg-red-50 text-red-900`;
+                    return `${base} bg-white focus:border-indigo-500 border-slate-200`;
+                };
+
+                // Feedback Icon
+                let feedbackIcon = '';
+                let feedbackColor = '';
+                if (state.feedback === 'correct') { feedbackIcon = 'check'; feedbackColor = 'text-green-600'; }
+                else if (state.feedback === 'revealed') { feedbackIcon = 'eye'; feedbackColor = 'text-blue-600'; }
+                else if (state.feedback === 'incorrect') { feedbackIcon = 'alert-circle'; feedbackColor = 'text-red-500'; }
+
+                // Action Button Logic
+                let actionBtn = '';
+                if (!isDone) {
+                    actionBtn = `<button onclick="checkAnswer()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-12 rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95">Check Answer</button>`;
+                } else {
+                    const btnText = isGameComplete ? "Finish Activity" : "Next Level";
+                    const btnFn = isGameComplete ? "finishGame()" : "nextLevel()";
+                    actionBtn = `<button onclick="${btnFn}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-12 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2 animate-in zoom-in">${btnText} <i data-lucide="arrow-right" class="w-5 h-5"></i></button>`;
+                }
+
+                app.innerHTML = `
+                    <div class="bg-white border-b px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            ${levelIndicators}
+                        </div>
+                        <button onclick="restartGame()" class="text-slate-400 hover:text-slate-600 transition-colors" title="New Problems">
+                            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 p-6 md:p-8 flex flex-col">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">${level.difficultyLabel}: ${level.title}</h2>
+                        <p class="text-slate-600 mb-6">${level.description}</p>
+
+                        <div class="bg-slate-100 rounded-xl p-6 mb-8 text-center overflow-x-auto shadow-inner">
+                            <div class="inline-flex items-center gap-2 text-xl md:text-3xl font-bold text-slate-700 font-mono">
+                                ${equationHtml}
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col items-center justify-center space-y-8 fade-in">
+                            <div class="text-center">
+                                <p class="text-xl font-medium max-w-lg">
+                                    Write the mole ratio for: <br/>
+                                    <span class="text-indigo-700 font-bold">${ratioData.q}</span>
+                                </p>
+                            </div>
+
+                            <div class="flex items-center gap-4">
+                                <div class="flex flex-col items-center gap-4">
+                                    <!-- Numerator -->
+                                    <div class="flex items-end gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100 shadow-sm transition-all focus-within:ring-2 focus-within:ring-indigo-100">
+                                        <div class="flex flex-col items-center">
+                                            <label class="text-xs text-slate-400 font-bold uppercase mb-1">Coeff</label>
+                                            <input type="text" value="${state.inputs.numCoeff}" oninput="handleInput('numCoeff', this.value)" placeholder="#" class="${getClass('numCoeff')} w-16 p-2 font-bold" ${isDone ? 'disabled' : ''}>
+                                        </div>
+                                        <div class="flex flex-col items-center">
+                                            <label class="text-xs text-slate-400 font-bold uppercase mb-1">Unit</label>
+                                            <input type="text" value="${state.inputs.numUnit}" oninput="handleInput('numUnit', this.value)" placeholder="unit" class="${getClass('numUnit')} w-20 p-2" ${isDone ? 'disabled' : ''}>
+                                        </div>
+                                        <div class="flex flex-col items-center">
+                                            <label class="text-xs text-slate-400 font-bold uppercase mb-1">Label</label>
+                                            <input type="text" value="${state.inputs.numSub}" oninput="handleInput('numSub', this.value)" placeholder="e.g. H₂O" class="${getClass('numSub')} w-40 p-2 font-mono placeholder:text-slate-300 placeholder:text-sm" ${isDone ? 'disabled' : ''}>
+                                        </div>
+                                    </div>
+
+                                    <!-- Fraction Bar -->
+                                    <div class="w-full h-1 bg-slate-800 rounded-full"></div>
+
+                                    <!-- Denominator -->
+                                    <div class="flex items-end gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100 shadow-sm transition-all focus-within:ring-2 focus-within:ring-indigo-100">
+                                        <div class="flex flex-col items-center">
+                                            <input type="text" value="${state.inputs.denCoeff}" oninput="handleInput('denCoeff', this.value)" placeholder="#" class="${getClass('denCoeff')} w-16 p-2 font-bold" ${isDone ? 'disabled' : ''}>
+                                            <label class="text-xs text-slate-400 font-bold uppercase mt-1">Coeff</label>
+                                        </div>
+                                        <div class="flex flex-col items-center">
+                                            <input type="text" value="${state.inputs.denUnit}" oninput="handleInput('denUnit', this.value)" placeholder="unit" class="${getClass('denUnit')} w-20 p-2" ${isDone ? 'disabled' : ''}>
+                                            <label class="text-xs text-slate-400 font-bold uppercase mt-1">Unit</label>
+                                        </div>
+                                        <div class="flex flex-col items-center">
+                                            <input type="text" value="${state.inputs.denSub}" oninput="handleInput('denSub', this.value)" placeholder="e.g. H₂O" class="${getClass('denSub')} w-40 p-2 font-mono placeholder:text-slate-300 placeholder:text-sm" ${isDone ? 'disabled' : ''}>
+                                            <label class="text-xs text-slate-400 font-bold uppercase mt-1">Label</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="h-16 w-full flex flex-col items-center justify-center">
+                                ${state.feedback ? `
+                                    <div class="flex items-center gap-2 text-lg font-medium fade-in ${feedbackColor}">
+                                        <i data-lucide="${feedbackIcon}" class="w-6 h-6"></i>
+                                        ${state.feedbackMsg}
+                                    </div>
+                                ` : ''}
+                            </div>
+
+                            ${actionBtn}
+                        </div>
+                    </div>
+                `;
+            }
+            lucide.createIcons(); // Refresh icons
+        };
+
+        // --- GAME LOGIC ---
+
+        function startGame() {
+            state.levels = generateGameLevels();
+            state.view = 'game';
+            state.currentLevelIdx = 0;
+            state.currentRatioIdx = Math.floor(Math.random() * state.levels[0].ratios.length);
+            resetInputs();
+            renderApp();
+        }
+
+        function restartGame() {
+            document.getElementById('completion-modal').classList.add('hidden');
+            state.view = 'intro';
+            renderApp();
+        }
+
+        function resetInputs() {
+            state.inputs = { numCoeff: '', numUnit: '', numSub: '', denCoeff: '', denUnit: '', denSub: '' };
+            state.fieldStatus = { numCoeff: 'neutral', numUnit: 'neutral', numSub: 'neutral', denCoeff: 'neutral', denUnit: 'neutral', denSub: 'neutral' };
+            state.feedback = null;
+            state.feedbackMsg = '';
+            state.attempts = 0;
+        }
+
+        function handleInput(field, value) {
+            // Auto subscript logic
+            if (field === 'numSub' || field === 'denSub') {
+                const subscripts = "₀₁₂₃₄₅₆₇₈₉";
+                value = value.replace(/[0-9]/g, (char) => subscripts[parseInt(char)]);
+            }
+            state.inputs[field] = value;
+            
+            // Reset neutral status on typing
+            if (state.fieldStatus[field] !== 'neutral') {
+                state.fieldStatus[field] = 'neutral';
+            }
+            if (state.feedback === 'incorrect') {
+                state.feedback = null;
+                state.feedbackMsg = '';
+            }
+            renderApp();
+        }
+
+        function checkAnswer() {
+            const currentLvl = state.levels[state.currentLevelIdx];
+            const currentTarget = currentLvl.ratios[state.currentRatioIdx];
+            
+            // Validation Helpers
+            const normalize = (str) => str.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, c => "0123456789"["₀₁₂₃₄₅₆₇₈₉".indexOf(c)]);
+            const clean = (str) => normalize(str).toLowerCase().trim().replace(/\s+/g, '');
+            const checkUnit = (u) => ['mol', 'moles', 'mole'].includes(clean(u));
+            const checkSub = (input, targets) => targets.some(target => clean(input) === clean(target));
+
+            const t = {
+                numCoeff: currentTarget.num.c,
+                numSub: currentTarget.num.s,
+                denCoeff: currentTarget.den.c,
+                denSub: currentTarget.den.s
+            };
+
+            const inputs = state.inputs;
+            const newStatus = {
+                numCoeff: inputs.numCoeff === t.numCoeff ? 'correct' : 'error',
+                numUnit: checkUnit(inputs.numUnit) ? 'correct' : 'error',
+                numSub: checkSub(inputs.numSub, t.numSub) ? 'correct' : 'error',
+                denCoeff: inputs.denCoeff === t.denCoeff ? 'correct' : 'error',
+                denUnit: checkUnit(inputs.denUnit) ? 'correct' : 'error',
+                denSub: checkSub(inputs.denSub, t.denSub) ? 'correct' : 'error'
+            };
+
+            state.fieldStatus = newStatus;
+            const errorCount = Object.values(newStatus).filter(s => s === 'error').length;
+
+            if (errorCount === 0) {
+                state.feedback = 'correct';
+                state.feedbackMsg = "Correct!";
+            } else {
+                if (state.attempts === 0) {
+                    state.attempts = 1;
+                    state.feedback = 'incorrect';
+                    state.feedbackMsg = "Some fields are incorrect (marked in red). Give it another try!";
+                } else {
+                    state.attempts = 2;
+                    state.feedback = 'revealed';
+                    state.feedbackMsg = "Here is the correct answer.";
+                    
+                    const toSub = (str) => str.replace(/\d/g, d => "₀₁₂₃₄₅₆₇₈₉"[d]);
+                    state.inputs = {
+                        numCoeff: t.numCoeff,
+                        numUnit: "mol",
+                        numSub: toSub(t.numSub[0]),
+                        denCoeff: t.denCoeff,
+                        denUnit: "mol",
+                        denSub: toSub(t.denSub[0])
+                    };
+                    // Mark all green visually
+                    Object.keys(state.fieldStatus).forEach(k => state.fieldStatus[k] = 'correct');
+                }
+            }
+            renderApp();
+        }
+
+        function nextLevel() {
+            if (state.currentLevelIdx < state.levels.length - 1) {
+                state.currentLevelIdx++;
+                state.currentRatioIdx = Math.floor(Math.random() * state.levels[state.currentLevelIdx].ratios.length);
+                resetInputs();
+                renderApp();
+            }
+        }
+
+        function finishGame() {
+            document.getElementById('completion-modal').classList.remove('hidden');
+        }
+
+        // Initialize
+        renderApp();
+    </script>
+</body>
+</html>
