@@ -123,6 +123,25 @@
             return rawLevels.map(lvl => ({ ...lvl, ratios: generateRatios(lvl.equation) }));
         };
 
+        // --- STYLE HELPERS (Moved to global scope for reuse) ---
+        const getInputBaseClasses = (status) => {
+            const base = "text-center text-lg border rounded focus:outline-none transition-colors duration-300";
+            if (status === 'correct') return `${base} border-green-500 bg-green-50 text-green-900`;
+            if (status === 'error') return `${base} border-red-500 bg-red-50 text-red-900`;
+            return `${base} bg-white focus:border-indigo-500 border-slate-200`;
+        };
+
+        const getStaticClasses = (field) => {
+            if (field.includes('Coeff')) return "w-16 p-2 font-bold";
+            if (field.includes('Unit')) return "w-20 p-2";
+            if (field.includes('Sub')) return "w-40 p-2 font-mono placeholder:text-slate-300 placeholder:text-sm";
+            return "";
+        };
+
+        const getClass = (field) => {
+            return `${getInputBaseClasses(state.fieldStatus[field])} ${getStaticClasses(field)}`;
+        };
+
         // --- RENDER FUNCTIONS ---
 
         const renderApp = () => {
@@ -182,15 +201,6 @@
                     return `<span class="whitespace-nowrap">${coef}${formatFormulaHTML(part.formula)}${plus}</span>`;
                 }).join('');
 
-                // Helper to get input classes based on status
-                const getClass = (field) => {
-                    const status = state.fieldStatus[field];
-                    const base = "text-center text-lg border rounded focus:outline-none transition-colors duration-300";
-                    if (status === 'correct') return `${base} border-green-500 bg-green-50 text-green-900`;
-                    if (status === 'error') return `${base} border-red-500 bg-red-50 text-red-900`;
-                    return `${base} bg-white focus:border-indigo-500 border-slate-200`;
-                };
-
                 // Feedback Icon
                 let feedbackIcon = '';
                 let feedbackColor = '';
@@ -207,6 +217,14 @@
                     const btnFn = isGameComplete ? "finishGame()" : "nextLevel()";
                     actionBtn = `<button onclick="${btnFn}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-12 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2 animate-in zoom-in">${btnText} <i data-lucide="arrow-right" class="w-5 h-5"></i></button>`;
                 }
+
+                // Initial render of feedback message content
+                const feedbackContent = state.feedback ? `
+                    <div class="flex items-center gap-2 text-lg font-medium fade-in ${feedbackColor}">
+                        <i data-lucide="${feedbackIcon}" class="w-6 h-6"></i>
+                        ${state.feedbackMsg}
+                    </div>
+                ` : '';
 
                 app.innerHTML = `
                     <div class="bg-white border-b px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -242,15 +260,15 @@
                                     <div class="flex items-end gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100 shadow-sm transition-all focus-within:ring-2 focus-within:ring-indigo-100">
                                         <div class="flex flex-col items-center">
                                             <label class="text-xs text-slate-400 font-bold uppercase mb-1">Coeff</label>
-                                            <input type="text" value="${state.inputs.numCoeff}" oninput="handleInput('numCoeff', this.value)" placeholder="#" class="${getClass('numCoeff')} w-16 p-2 font-bold" ${isDone ? 'disabled' : ''}>
+                                            <input type="text" value="${state.inputs.numCoeff}" oninput="handleInput('numCoeff', this)" placeholder="#" class="${getClass('numCoeff')}" ${isDone ? 'disabled' : ''}>
                                         </div>
                                         <div class="flex flex-col items-center">
                                             <label class="text-xs text-slate-400 font-bold uppercase mb-1">Unit</label>
-                                            <input type="text" value="${state.inputs.numUnit}" oninput="handleInput('numUnit', this.value)" placeholder="unit" class="${getClass('numUnit')} w-20 p-2" ${isDone ? 'disabled' : ''}>
+                                            <input type="text" value="${state.inputs.numUnit}" oninput="handleInput('numUnit', this)" placeholder="unit" class="${getClass('numUnit')}" ${isDone ? 'disabled' : ''}>
                                         </div>
                                         <div class="flex flex-col items-center">
                                             <label class="text-xs text-slate-400 font-bold uppercase mb-1">Label</label>
-                                            <input type="text" value="${state.inputs.numSub}" oninput="handleInput('numSub', this.value)" placeholder="e.g. H₂O" class="${getClass('numSub')} w-40 p-2 font-mono placeholder:text-slate-300 placeholder:text-sm" ${isDone ? 'disabled' : ''}>
+                                            <input type="text" value="${state.inputs.numSub}" oninput="handleInput('numSub', this)" placeholder="e.g. H₂O" class="${getClass('numSub')}" ${isDone ? 'disabled' : ''}>
                                         </div>
                                     </div>
 
@@ -260,28 +278,23 @@
                                     <!-- Denominator -->
                                     <div class="flex items-end gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100 shadow-sm transition-all focus-within:ring-2 focus-within:ring-indigo-100">
                                         <div class="flex flex-col items-center">
-                                            <input type="text" value="${state.inputs.denCoeff}" oninput="handleInput('denCoeff', this.value)" placeholder="#" class="${getClass('denCoeff')} w-16 p-2 font-bold" ${isDone ? 'disabled' : ''}>
+                                            <input type="text" value="${state.inputs.denCoeff}" oninput="handleInput('denCoeff', this)" placeholder="#" class="${getClass('denCoeff')}" ${isDone ? 'disabled' : ''}>
                                             <label class="text-xs text-slate-400 font-bold uppercase mt-1">Coeff</label>
                                         </div>
                                         <div class="flex flex-col items-center">
-                                            <input type="text" value="${state.inputs.denUnit}" oninput="handleInput('denUnit', this.value)" placeholder="unit" class="${getClass('denUnit')} w-20 p-2" ${isDone ? 'disabled' : ''}>
+                                            <input type="text" value="${state.inputs.denUnit}" oninput="handleInput('denUnit', this)" placeholder="unit" class="${getClass('denUnit')}" ${isDone ? 'disabled' : ''}>
                                             <label class="text-xs text-slate-400 font-bold uppercase mt-1">Unit</label>
                                         </div>
                                         <div class="flex flex-col items-center">
-                                            <input type="text" value="${state.inputs.denSub}" oninput="handleInput('denSub', this.value)" placeholder="e.g. H₂O" class="${getClass('denSub')} w-40 p-2 font-mono placeholder:text-slate-300 placeholder:text-sm" ${isDone ? 'disabled' : ''}>
+                                            <input type="text" value="${state.inputs.denSub}" oninput="handleInput('denSub', this)" placeholder="e.g. H₂O" class="${getClass('denSub')}" ${isDone ? 'disabled' : ''}>
                                             <label class="text-xs text-slate-400 font-bold uppercase mt-1">Label</label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="h-16 w-full flex flex-col items-center justify-center">
-                                ${state.feedback ? `
-                                    <div class="flex items-center gap-2 text-lg font-medium fade-in ${feedbackColor}">
-                                        <i data-lucide="${feedbackIcon}" class="w-6 h-6"></i>
-                                        ${state.feedbackMsg}
-                                    </div>
-                                ` : ''}
+                            <div id="feedback-area" class="h-16 w-full flex flex-col items-center justify-center">
+                                ${feedbackContent}
                             </div>
 
                             ${actionBtn}
@@ -317,23 +330,37 @@
             state.attempts = 0;
         }
 
-        function handleInput(field, value) {
-            // Auto subscript logic
+        function handleInput(field, element) {
+            let value = element.value;
+            
+            // Auto subscript logic for labels
             if (field === 'numSub' || field === 'denSub') {
                 const subscripts = "₀₁₂₃₄₅₆₇₈₉";
-                value = value.replace(/[0-9]/g, (char) => subscripts[parseInt(char)]);
+                const newValue = value.replace(/[0-9]/g, (char) => subscripts[parseInt(char)]);
+                
+                // Only update DOM if the value changed (avoids cursor jump when not needed)
+                if (newValue !== value) {
+                    const start = element.selectionStart;
+                    const end = element.selectionEnd;
+                    element.value = newValue;
+                    value = newValue; // Update local var for state
+                    element.setSelectionRange(start, end);
+                }
             }
             state.inputs[field] = value;
             
-            // Reset neutral status on typing
+            // Logic to clear errors/feedback without re-rendering the whole app
             if (state.fieldStatus[field] !== 'neutral') {
                 state.fieldStatus[field] = 'neutral';
+                element.className = getClass(field); // Reset classes directly
             }
+            
             if (state.feedback === 'incorrect') {
                 state.feedback = null;
                 state.feedbackMsg = '';
+                document.getElementById('feedback-area').innerHTML = ''; // Clear feedback text
             }
-            renderApp();
+            // Note: renderApp() is NOT called here to preserve focus
         }
 
         function checkAnswer() {
